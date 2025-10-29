@@ -1,0 +1,56 @@
+# Maintainer: Oscar Rojas <tu-correo@ejemplo.com>
+
+pkgname=visual-studio-code-bin
+pkgver=1.105.1
+pkgrel=1
+pkgdesc="Visual Studio Code - Editor oficial de Microsoft (soporte Wayland)"
+arch=('x86_64')
+url="https://code.visualstudio.com/"
+license=('custom:Microsoft')
+depends=('glibc' 'gtk3' 'nss' 'alsa-lib' 'libsecret' 'wayland' 'libxkbcommon' 'libdrm' 'libglvnd')
+optdepends=('git: control de versiones' 'gvfs: integración con GNOME')
+provides=('code')
+conflicts=('code' 'vscodium-bin' 'code-oss')
+source=("code.desktop")
+sha256sums=('SKIP')
+
+pkgver() {
+  curl -s https://update.code.visualstudio.com/api/releases/stable | \
+    grep -oE '"v?[0-9]+(\.[0-9]+)*"' | head -n1 | sed 's/[\"v]//g'
+}
+
+prepare() {
+  _ver=$(pkgver)
+  echo "➡️ Descargando VS Code versión ${_ver}..."
+  curl -L -o "vscode-linux-x64.tar.gz" \
+    "https://update.code.visualstudio.com/${_ver}/linux-x64/stable"
+
+  echo "➡️ Calculando checksum..."
+  sha256sum "vscode-linux-x64.tar.gz" | cut -d' ' -f1 > "vscode-linux-x64.tar.gz.sha256"
+}
+
+package() {
+  install -d "$pkgdir/opt/visual-studio-code"
+  tar -xzf vscode-linux-x64.tar.gz -C "$pkgdir/opt/visual-studio-code" --strip-components=1
+
+  install -Dm644 "$pkgdir/opt/visual-studio-code/resources/app/resources/linux/code.png" \
+    "$pkgdir/usr/share/pixmaps/code.png"
+
+  install -Dm644 "$srcdir/code.desktop" "$pkgdir/usr/share/applications/code.desktop"
+  sed -i 's|@@NAME@@|Visual Studio Code (Wayland)|g' "$pkgdir/usr/share/applications/code.desktop"
+  sed -i 's|@@EXEC@@|/opt/visual-studio-code/code --enable-features=WaylandWindowDecorations --ozone-platform=wayland|g' \
+    "$pkgdir/usr/share/applications/code.desktop"
+
+install -Dm755 /dev/stdin "$pkgdir/usr/bin/code" <<'EOF'
+#!/bin/sh
+nohup /opt/visual-studio-code/code \
+  --enable-features=WaylandWindowDecorations \
+  --ozone-platform=wayland \
+  "$@" >/dev/null 2>&1 &
+disown
+EOF
+
+
+
+}
+
