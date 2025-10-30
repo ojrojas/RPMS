@@ -1,0 +1,72 @@
+# Maintainer: Oscar Rojas <tu-correo@ejemplo.com>
+
+pkgname=google-chrome-wayland-bin
+pkgver=143.0.7499.4
+pkgrel=1
+pkgdesc="Navegador Google Chrome (estable, binario oficial, integrado con Wayland)"
+arch=('x86_64')
+url="https://www.google.com/chrome/"
+license=('custom:Google')
+depends=('glibc' 'gtk3' 'nss' 'alsa-lib' 'libxss' 'libsecret' 'wayland' 'libxkbcommon' 'libdrm' 'libglvnd')
+optdepends=('pipewire: soporte multimedia' 'xdg-desktop-portal: integración de escritorio')
+provides=('google-chrome-wayland')
+conflicts=() # ✅ no entra en conflicto con chromium ni chrome oficial
+source=()
+sha256sums=()
+
+pkgver() {
+  curl -s https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-amd64/Packages \
+    | grep -m1 "Version:" | awk '{print $2}' | cut -d'-' -f1
+}
+
+prepare() {
+  _ver=$(pkgver)
+  echo "➡️ Descargando Google Chrome versión ${_ver}..."
+  curl -L -o "google-chrome.deb" "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb"
+}
+
+package() {
+  install -d "$pkgdir"
+
+  # Extraer el paquete .deb en un tmpdir para evitar conflictos
+  mkdir -p "$srcdir/tmpdeb"
+  bsdtar -xf google-chrome.deb -C "$srcdir/tmpdeb"
+  tar -xf "$srcdir/tmpdeb/data.tar.xz" -C "$pkgdir"
+  rm -rf "$srcdir/tmpdeb"
+
+  # Instalar binarios renombrados para evitar conflictos con chromium
+  install -Dm755 /dev/stdin "$pkgdir/usr/bin/google-chrome-wayland" <<'EOF'
+#!/bin/sh
+if [ "$XDG_SESSION_TYPE" = "wayland" ]; then
+  nohup /opt/google/chrome/google-chrome \
+    --enable-features=UseOzonePlatform,WebRTCPipeWireCapturer \
+    --ozone-platform=wayland \
+    --enable-wayland-ime \
+    "$@" >/dev/null 2>&1 &
+else
+  nohup /opt/google/chrome/google-chrome \
+    --enable-features=UseOzonePlatform \
+    --ozone-platform=x11 \
+    "$@" >/dev/null 2>&1 &
+fi
+disown
+EOF
+
+  # Renombrar el icono y el .desktop
+  install -Dm644 "$pkgdir/opt/google/chrome/product_logo_256.png" \
+    "$pkgdir/usr/share/pixmaps/google-chrome-wayland.png"
+
+  install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/google-chrome-wayland.desktop" <<'EOF'
+[Desktop Entry]
+Version=1.0
+Name=Google Chrome (Wayland)
+GenericName=Web Browser
+Exec=google-chrome-wayland %U
+Icon=google-chrome-wayland
+Type=Application
+Categories=Network;WebBrowser;
+StartupNotify=true
+StartupWMClass=Google-chrome
+EOF
+}
+

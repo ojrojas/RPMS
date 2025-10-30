@@ -21,11 +21,11 @@ pkgver() {
 
 prepare() {
   _ver=$(pkgver)
-  echo "➡️ Descargando VS Code versión ${_ver}..."
+  echo "➡️ Download VS Code versión ${_ver} ..."
   curl -L -o "vscode-linux-x64.tar.gz" \
     "https://update.code.visualstudio.com/${_ver}/linux-x64/stable"
 
-  echo "➡️ Calculando checksum..."
+  echo "➡️ Calculate checksum..."
   sha256sum "vscode-linux-x64.tar.gz" | cut -d' ' -f1 > "vscode-linux-x64.tar.gz.sha256"
 }
 
