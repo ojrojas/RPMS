@@ -1,16 +1,16 @@
-# Maintainer: Oscar Rojas <tu-correo@ejemplo.com>
+# Maintainer: Oscar Rojas
 
 pkgname=google-chrome-wayland-bin
 pkgver=143.0.7499.4
 pkgrel=1
-pkgdesc="Navegador Google Chrome (estable, binario oficial, integrado con Wayland)"
+pkgdesc="Google Chrome browser (stable, official binary, integrated with Wayland)"
 arch=('x86_64')
 url="https://www.google.com/chrome/"
 license=('custom:Google')
 depends=('glibc' 'gtk3' 'nss' 'alsa-lib' 'libxss' 'libsecret' 'wayland' 'libxkbcommon' 'libdrm' 'libglvnd')
-optdepends=('pipewire: soporte multimedia' 'xdg-desktop-portal: integración de escritorio')
+optdepends=('pipewire: multimedia support' 'xdg-desktop-portal: desktop integration')
 provides=('google-chrome-wayland')
-conflicts=() # ✅ no entra en conflicto con chromium ni chrome oficial
+conflicts=() 
 source=()
 sha256sums=()
 
@@ -28,13 +28,15 @@ prepare() {
 package() {
   install -d "$pkgdir"
 
-  # Extraer el paquete .deb en un tmpdir para evitar conflictos
+  # Extract the .deb package into a tmpdir to avoid conflicts
+
   mkdir -p "$srcdir/tmpdeb"
   bsdtar -xf google-chrome.deb -C "$srcdir/tmpdeb"
   tar -xf "$srcdir/tmpdeb/data.tar.xz" -C "$pkgdir"
   rm -rf "$srcdir/tmpdeb"
 
-  # Instalar binarios renombrados para evitar conflictos con chromium
+  # Install renamed binaries to avoid conflicts with Chromium
+
   install -Dm755 /dev/stdin "$pkgdir/usr/bin/google-chrome-wayland" <<'EOF'
 #!/bin/sh
 if [ "$XDG_SESSION_TYPE" = "wayland" ]; then
@@ -52,7 +54,7 @@ fi
 disown
 EOF
 
-  # Renombrar el icono y el .desktop
+  # Rename icon .desktop
   install -Dm644 "$pkgdir/opt/google/chrome/product_logo_256.png" \
     "$pkgdir/usr/share/pixmaps/google-chrome-wayland.png"
 

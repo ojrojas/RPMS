@@ -3,12 +3,12 @@
 pkgname=visual-studio-code-bin
 pkgver=1.105.1
 pkgrel=1
-pkgdesc="Visual Studio Code - Editor oficial de Microsoft (soporte Wayland)"
+pkgdesc="Visual Studio Code - (Wayland support)"
 arch=('x86_64')
 url="https://code.visualstudio.com/"
 license=('custom:Microsoft')
 depends=('glibc' 'gtk3' 'nss' 'alsa-lib' 'libsecret' 'wayland' 'libxkbcommon' 'libdrm' 'libglvnd')
-optdepends=('git: control de versiones' 'gvfs: integración con GNOME')
+optdepends=('git: version control' 'gvfs: GNOME')
 provides=('code')
 conflicts=('code' 'vscodium-bin' 'code-oss')
 source=("code.desktop")
