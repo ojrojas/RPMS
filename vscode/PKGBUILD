@@ -1,7 +1,7 @@
 # Maintainer: Oscar Rojas
 
 pkgname=visual-studio-code-bin
-pkgver=1.105.1
+pkgver=1.108.1
 pkgrel=1
 pkgdesc="Visual Studio Code - (Wayland support)"
 arch=('x86_64')
@@ -11,6 +11,7 @@ depends=('glibc' 'gtk3' 'nss' 'alsa-lib' 'libsecret' 'wayland' 'libxkbcommon' 'l
 optdepends=('git: version control' 'gvfs: GNOME')
 provides=('code')
 conflicts=('code' 'vscodium-bin' 'code-oss')
+options=('!strip' '!debug')
 source=("code.desktop")
 sha256sums=('SKIP')
 
