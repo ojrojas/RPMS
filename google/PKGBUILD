@@ -1,7 +1,7 @@
 # Maintainer: Oscar Rojas
 
 pkgname=google-chrome-wayland-bin
-pkgver=143.0.7499.4
+pkgver=145.0.7632.18
 pkgrel=1
 pkgdesc="Google Chrome browser (stable, official binary, integrated with Wayland)"
 arch=('x86_64')
@@ -11,8 +11,9 @@ depends=('glibc' 'gtk3' 'nss' 'alsa-lib' 'libxss' 'libsecret' 'wayland' 'libxkbc
 optdepends=('pipewire: multimedia support' 'xdg-desktop-portal: desktop integration')
 provides=('google-chrome-wayland')
 conflicts=() 
-source=()
-sha256sums=()
+options=('!strip' '!debug')
+source=("google-chrome.desktop")
+sha256sums=('SKIP')
 
 pkgver() {
   curl -s https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-amd64/Packages \
@@ -39,18 +40,11 @@ package() {
 
   install -Dm755 /dev/stdin "$pkgdir/usr/bin/google-chrome-wayland" <<'EOF'
 #!/bin/sh
-if [ "$XDG_SESSION_TYPE" = "wayland" ]; then
-  nohup /opt/google/chrome/google-chrome \
-    --enable-features=UseOzonePlatform,WebRTCPipeWireCapturer \
-    --ozone-platform=wayland \
-    --enable-wayland-ime \
-    "$@" >/dev/null 2>&1 &
-else
-  nohup /opt/google/chrome/google-chrome \
-    --enable-features=UseOzonePlatform \
-    --ozone-platform=x11 \
-    "$@" >/dev/null 2>&1 &
-fi
+nohup /opt/google/chrome/google-chrome \
+  --enable-features=UseOzonePlatform,WebRTCPipeWireCapturer,WaylandWindowDecorations \
+  --ozone-platform=wayland \
+  --enable-wayland-ime \
+  "$@" >/dev/null 2>&1 &
 disown
 EOF
 
@@ -58,17 +52,7 @@ EOF
   install -Dm644 "$pkgdir/opt/google/chrome/product_logo_256.png" \
     "$pkgdir/usr/share/pixmaps/google-chrome-wayland.png"
 
-  install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/google-chrome-wayland.desktop" <<'EOF'
-[Desktop Entry]
-Version=1.0
-Name=Google Chrome (Wayland)
-GenericName=Web Browser
-Exec=google-chrome-wayland %U
-Icon=google-chrome-wayland
-Type=Application
-Categories=Network;WebBrowser;
-StartupNotify=true
-StartupWMClass=Google-chrome
-EOF
+  install -Dm644 "$srcdir/google-chrome.desktop" \
+    "$pkgdir/usr/share/applications/google-chrome-wayland.desktop"
 }
 

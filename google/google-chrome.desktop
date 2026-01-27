@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Name=Google Chrome (Wayland)
+GenericName=Web Browser
+Exec=google-chrome-wayland %U
+Icon=google-chrome-wayland
+Type=Application
+Categories=Network;WebBrowser;
+StartupNotify=true
+StartupWMClass=Google-chrome

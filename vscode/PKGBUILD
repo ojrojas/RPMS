@@ -1,7 +1,7 @@
 # Maintainer: Oscar Rojas
 
 pkgname=visual-studio-code-bin
-pkgver=1.108.1
+pkgver=1.108.2
 pkgrel=1
 pkgdesc="Visual Studio Code - (Wayland support)"
 arch=('x86_64')
