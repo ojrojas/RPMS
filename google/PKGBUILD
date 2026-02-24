@@ -1,7 +1,7 @@
 # Maintainer: Oscar Rojas
 
 pkgname=google-chrome-wayland-bin
-pkgver=145.0.7632.18
+pkgver=146.0.7680.16
 pkgrel=1
 pkgdesc="Google Chrome browser (stable, official binary, integrated with Wayland)"
 arch=('x86_64')
@@ -48,11 +48,11 @@ nohup /opt/google/chrome/google-chrome \
 disown
 EOF
 
-  # Rename icon .desktop
-  install -Dm644 "$pkgdir/opt/google/chrome/product_logo_256.png" \
-    "$pkgdir/usr/share/pixmaps/google-chrome-wayland.png"
+  # # Rename icon .desktop
+  # install -Dm644 "$pkgdir/opt/google/chrome/product_logo_256.png" \
+  #   "$pkgdir/usr/share/pixmaps/google-chrome-wayland.png"
 
-  install -Dm644 "$srcdir/google-chrome.desktop" \
-    "$pkgdir/usr/share/applications/google-chrome-wayland.desktop"
+  # install -Dm644 "$srcdir/google-chrome.desktop" \
+  #   "$pkgdir/usr/share/applications/google-chrome-wayland.desktop"
 }
 

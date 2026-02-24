@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=@@NAME@@
+Comment=Code Editing. Redefined.
+Exec=@@EXEC@@ %F
+Icon=code
+Type=Application
+StartupNotify=true
+StartupWMClass=Code
+Categories=Development;IDE;
+MimeType=text/plain;inode/directory;

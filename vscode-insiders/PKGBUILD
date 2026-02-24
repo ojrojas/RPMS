@@ -1,0 +1,56 @@
+# Maintainer: Oscar Rojas
+
+pkgname=visual-studio-code-insiders-bin
+pkgver=
+pkgrel=1
+pkgdesc="Visual Studio Code - Insiders (Wayland support)"
+arch=('x86_64')
+url="https://code.visualstudio.com/"
+license=('custom:Microsoft')
+depends=('glibc' 'gtk3' 'nss' 'alsa-lib' 'libsecret' 'wayland' 'libxkbcommon' 'libdrm' 'libglvnd')
+optdepends=('git: version control' 'gvfs: GNOME')
+provides=('code-insiders')
+conflicts=('code' 'vscodium-bin' 'code-oss' 'visual-studio-code-bin')
+options=('!strip' '!debug')
+source=("code.desktop")
+sha256sums=('SKIP')
+
+pkgver() {
+  curl -s https://update.code.visualstudio.com/api/releases/insider | \
+    grep -oE '"v?[0-9]+(\.[0-9]+)*"' | head -n1 | sed 's/[\"v]//g'
+}
+
+prepare() {
+  _ver=$(pkgver)
+  echo "➡️ Download VS Code Insiders versión ${_ver} ..."
+  curl -L -o "vscode-linux-x64.tar.gz" \
+    "https://update.code.visualstudio.com/${_ver}/linux-x64/insider"
+
+  echo "➡️ Calculate checksum..."
+  sha256sum "vscode-linux-x64.tar.gz" | cut -d' ' -f1 > "vscode-linux-x64.tar.gz.sha256"
+}
+
+package() {
+  install -d "$pkgdir/opt/visual-studio-code-insiders"
+  tar -xzf vscode-linux-x64.tar.gz -C "$pkgdir/opt/visual-studio-code-insiders" --strip-components=1
+
+  install -Dm644 "$pkgdir/opt/visual-studio-code-insiders/resources/app/resources/linux/code.png" \
+    "$pkgdir/usr/share/pixmaps/code.png"
+
+  install -Dm644 "$srcdir/code.desktop" "$pkgdir/usr/share/applications/code.desktop"
+  sed -i 's|@@NAME@@|Visual Studio Code Insiders (Wayland)|g' "$pkgdir/usr/share/applications/code.desktop"
+  sed -i 's|@@EXEC@@|/opt/visual-studio-code-insiders/code --enable-features=WaylandWindowDecorations --ozone-platform=wayland|g' \
+    "$pkgdir/usr/share/applications/code.desktop"
+
+install -Dm755 /dev/stdin "$pkgdir/usr/bin/code-insiders" <<'EOF'
+#!/bin/sh
+nohup /opt/visual-studio-code-insiders/code \
+  --enable-features=WaylandWindowDecorations \
+  --ozone-platform=wayland \
+  "$@" >/dev/null 2>&1 &
+disown
+EOF
+
+
+
+}
