@@ -1,7 +1,7 @@
 # Maintainer: Oscar Rojas
 
 pkgname=visual-studio-code-insiders-bin
-pkgver=
+pkgver=1.110.0
 pkgrel=1
 pkgdesc="Visual Studio Code - Insiders (Wayland support)"
 arch=('x86_64')
@@ -12,19 +12,25 @@ optdepends=('git: version control' 'gvfs: GNOME')
 provides=('code-insiders')
 conflicts=('code' 'vscodium-bin' 'code-oss' 'visual-studio-code-bin')
 options=('!strip' '!debug')
-source=("code.desktop")
+source=("code-insiders.desktop")
 sha256sums=('SKIP')
 
-pkgver() {
+# return the full upstream version string (e.g. 1.110.0-insider)
+get_fullver() {
   curl -s https://update.code.visualstudio.com/api/releases/insider | \
-    grep -oE '"v?[0-9]+(\.[0-9]+)*"' | head -n1 | sed 's/[\"v]//g'
+    grep -oE '"[0-9]+(\.[0-9]+)*-insider"' | head -n1 | tr -d '"'
+}
+
+# pkgver must not contain hyphens, so strip the "-insider" suffix here
+pkgver() {
+  get_fullver | sed 's/-insider$//'
 }
 
 prepare() {
-  _ver=$(pkgver)
-  echo "➡️ Download VS Code Insiders versión ${_ver} ..."
+  _full=$(get_fullver)
+  echo "➡️ Download VS Code Insiders versión ${_full} ..."
   curl -L -o "vscode-linux-x64.tar.gz" \
-    "https://update.code.visualstudio.com/${_ver}/linux-x64/insider"
+    "https://update.code.visualstudio.com/${_full}/linux-x64/insider"
 
   echo "➡️ Calculate checksum..."
   sha256sum "vscode-linux-x64.tar.gz" | cut -d' ' -f1 > "vscode-linux-x64.tar.gz.sha256"
@@ -37,14 +43,14 @@ package() {
   install -Dm644 "$pkgdir/opt/visual-studio-code-insiders/resources/app/resources/linux/code.png" \
     "$pkgdir/usr/share/pixmaps/code.png"
 
-  install -Dm644 "$srcdir/code.desktop" "$pkgdir/usr/share/applications/code.desktop"
-  sed -i 's|@@NAME@@|Visual Studio Code Insiders (Wayland)|g' "$pkgdir/usr/share/applications/code.desktop"
-  sed -i 's|@@EXEC@@|/opt/visual-studio-code-insiders/code --enable-features=WaylandWindowDecorations --ozone-platform=wayland|g' \
-    "$pkgdir/usr/share/applications/code.desktop"
+  install -Dm644 "$srcdir/code-insiders.desktop" "$pkgdir/usr/share/applications/code-insiders.desktop"
+  sed -i 's|@@NAME@@|Visual Studio Code Insiders (Wayland)|g' "$pkgdir/usr/share/applications/code-insiders.desktop"
+  sed -i 's|@@EXEC@@|/opt/visual-studio-code-insiders/code-insiders --enable-features=WaylandWindowDecorations --ozone-platform=wayland|g' \
+    "$pkgdir/usr/share/applications/code-insiders.desktop"
 
 install -Dm755 /dev/stdin "$pkgdir/usr/bin/code-insiders" <<'EOF'
 #!/bin/sh
-nohup /opt/visual-studio-code-insiders/code \
+nohup /opt/visual-studio-code-insiders/code-insiders \
   --enable-features=WaylandWindowDecorations \
   --ozone-platform=wayland \
   "$@" >/dev/null 2>&1 &
