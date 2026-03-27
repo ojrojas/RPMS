@@ -12,7 +12,7 @@ optdepends=('git: version control' 'gvfs: GNOME')
 provides=('code-insiders')
 conflicts=('code' 'vscodium-bin' 'code-oss' 'visual-studio-code-bin')
 options=('!strip' '!debug')
-source=("code-insiders.desktop")
+source=("code.desktop")
 sha256sums=('SKIP')
 
 # return the full upstream version string (e.g. 1.110.0-insider)
@@ -43,14 +43,14 @@ package() {
   install -Dm644 "$pkgdir/opt/visual-studio-code-insiders/resources/app/resources/linux/code.png" \
     "$pkgdir/usr/share/pixmaps/code.png"
 
-  install -Dm644 "$srcdir/code-insiders.desktop" "$pkgdir/usr/share/applications/code-insiders.desktop"
-  sed -i 's|@@NAME@@|Visual Studio Code Insiders (Wayland)|g' "$pkgdir/usr/share/applications/code-insiders.desktop"
-  sed -i 's|@@EXEC@@|/opt/visual-studio-code-insiders/code-insiders --enable-features=WaylandWindowDecorations --ozone-platform=wayland|g' \
-    "$pkgdir/usr/share/applications/code-insiders.desktop"
+  install -Dm644 "$srcdir/code.desktop" "$pkgdir/usr/share/applications/code.desktop"
+  sed -i 's|@@NAME@@|Visual Studio Code Insiders (Wayland)|g' "$pkgdir/usr/share/applications/code.desktop"
+  sed -i 's|@@EXEC@@|/opt/visual-studio-code-insiders/code --enable-features=WaylandWindowDecorations --ozone-platform=wayland|g' \
+    "$pkgdir/usr/share/applications/code.desktop"
 
 install -Dm755 /dev/stdin "$pkgdir/usr/bin/code-insiders" <<'EOF'
 #!/bin/sh
-nohup /opt/visual-studio-code-insiders/code-insiders \
+nohup /opt/visual-studio-code-insiders/code \
   --enable-features=WaylandWindowDecorations \
   --ozone-platform=wayland \
   "$@" >/dev/null 2>&1 &
