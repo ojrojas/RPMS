@@ -1,0 +1,152 @@
+# Maintainer: Your Name
+
+pkgname=claude-desktop
+pkgver=1.40609.0
+pkgrel=1
+pkgdesc="Claude Desktop for Linux"
+arch=('x86_64')
+url="https://claude.ai/download"
+license=('custom')
+options=('!strip')
+
+depends=(
+    'glibc'
+    'gtk3'
+    'libx11'
+    'libxcb'
+    'libxcomposite'
+    'libxdamage'
+    'libxext'
+    'libxfixes'
+    'libxrandr'
+    'nss'
+    'alsa-lib'
+    'at-spi2-core'
+)
+
+makedepends=('curl')
+
+source=()
+
+prepare() {
+    cd "$srcdir"
+
+    local base_url="https://downloads.claude.ai/claude-desktop/apt/stable"
+    local packages_url="$base_url/dists/stable/main/binary-amd64/Packages"
+
+    echo "==> Finding latest Claude Desktop package..."
+
+    local filename
+    filename="$(
+        curl -fsSL "$packages_url" |
+        grep '^Filename: pool/main/c/claude-desktop/claude-desktop_' |
+        sort -V |
+        tail -n 1 |
+        cut -d' ' -f2
+    )"
+
+    if [[ -z "$filename" ]]; then
+        echo "ERROR: Could not find Claude Desktop package."
+        return 1
+    fi
+
+    local deb_url="$base_url/$filename"
+
+    echo "==> Downloading:"
+    echo "    $deb_url"
+
+    curl -fL "$deb_url" -o claude-desktop.deb
+
+    echo "==> Extracting Debian archive..."
+
+    rm -rf deb-extracted
+    mkdir -p deb-extracted
+
+    # A .deb is an ar archive containing:
+    #   debian-binary
+    #   control.tar.*
+    #   data.tar.*
+    bsdtar -xf claude-desktop.deb -C deb-extracted
+
+    echo "==> Contents of Debian package:"
+    ls -lh deb-extracted
+
+    # Extract the control archive so pkgver() can read it.
+    mkdir -p control
+
+    local control_archive
+    control_archive=$(find deb-extracted -maxdepth 1 \
+        -type f \
+        \( -name 'control.tar.*' \) \
+        -print -quit)
+
+    if [[ -n "$control_archive" ]]; then
+        bsdtar -xf "$control_archive" -C control
+    fi
+
+    # Find the actual application data archive.
+    local data_archive
+    data_archive=$(find deb-extracted -maxdepth 1 \
+        -type f \
+        \( -name 'data.tar.*' \) \
+        -print -quit)
+
+    if [[ -z "$data_archive" ]]; then
+        echo "ERROR: data.tar archive not found."
+        return 1
+    fi
+
+    echo "==> Found data archive:"
+    echo "    $data_archive"
+
+    # Extract the actual application filesystem.
+    rm -rf data
+    mkdir -p data
+
+    bsdtar -xf "$data_archive" -C data
+
+    echo "==> Extracted files:"
+    find data -maxdepth 3 -type f | head -30
+}
+
+pkgver() {
+    if [[ -f "$srcdir/control/control" ]]; then
+        sed -n 's/^Version: //p' "$srcdir/control/control" |
+            head -n1 |
+            sed 's/[^0-9.].*$//'
+    else
+        echo "1.0.0"
+    fi
+}
+
+package() {
+    cd "$srcdir"
+
+    echo "==> Installing Claude Desktop..."
+
+    # Install the actual contents of data.tar.*.
+    cp -a data/. "$pkgdir/"
+
+    # Debian-specific files are not needed by Arch.
+    rm -rf "$pkgdir/DEBIAN"
+
+    # Fix desktop entry permissions.
+    if [[ -d "$pkgdir/usr/share/applications" ]]; then
+        find "$pkgdir/usr/share/applications" \
+            -type f \
+            -name '*.desktop' \
+            -exec chmod 644 {} \;
+    fi
+
+    # Make sure binaries are executable.
+    if [[ -d "$pkgdir/usr/bin" ]]; then
+        find "$pkgdir/usr/bin" \
+            -type f \
+            -exec chmod +x {} \;
+    fi
+
+    # Show what Claude installed.
+    echo
+    echo "==> Installed Claude files:"
+    find "$pkgdir" -maxdepth 4 -iname '*claude*' -print
+}
