@@ -19,36 +19,109 @@ depends=(
     'libxext'
     'libxfixes'
     'libxrandr'
+    'libxtst'
     'nss'
+    'nspr'
     'alsa-lib'
     'at-spi2-core'
+    'libxkbcommon'
+    'libdrm'
+    'mesa'
+    'libva'
+    'libsecret'
+    'wayland'
+    'libglvnd'
+    'libnotify'
+    'xdg-utils'
+    'util-linux-libs'
+    'xdg-desktop-portal'
+    'xdg-desktop-portal-gtk'
+    'xdg-desktop-portal-gnome'
 )
 
-makedepends=('curl')
+makedepends=(
+    'curl'
+)
 
 source=()
 
+# -------------------------------------------------------------
+# Get the latest Claude Desktop version and filename
+# -------------------------------------------------------------
+
+_get_latest_package() {
+
+    local packages_url="https://downloads.claude.ai/claude-desktop/apt/stable/dists/stable/main/binary-amd64/Packages"
+
+    curl -fsSL "$packages_url" |
+    awk '
+        BEGIN {
+            RS = ""
+            FS = "\n"
+        }
+
+        $1 == "Package: claude-desktop" {
+            version = ""
+            filename = ""
+
+            for (i = 1; i <= NF; i++) {
+                if ($i ~ /^Version: /) version = substr($i, 10)
+                if ($i ~ /^Filename: /) filename = substr($i, 11)
+            }
+
+            if (version != "" && filename != "") print version "|" filename
+        }
+    ' |
+    sort -t'|' -k1,1V |
+    tail -n1
+}
+
+# -------------------------------------------------------------
+# Automatically determine latest version
+# -------------------------------------------------------------
+
+pkgver() {
+
+    local package_info
+
+    package_info="$(_get_latest_package)"
+
+    if [[ -n "$package_info" ]]; then
+        printf '%s\n' "${package_info%%|*}"
+    else
+        printf '%s\n' "$pkgver"
+    fi
+}
+
+# -------------------------------------------------------------
+# Prepare
+# -------------------------------------------------------------
+
 prepare() {
+
     cd "$srcdir"
 
     local base_url="https://downloads.claude.ai/claude-desktop/apt/stable"
-    local packages_url="$base_url/dists/stable/main/binary-amd64/Packages"
 
-    echo "==> Finding latest Claude Desktop package..."
+    echo "==> Querying Claude Desktop repository..."
 
-    local filename
-    filename="$(
-        curl -fsSL "$packages_url" |
-        grep '^Filename: pool/main/c/claude-desktop/claude-desktop_' |
-        sort -V |
-        tail -n 1 |
-        cut -d' ' -f2
-    )"
+    local package_info
 
-    if [[ -z "$filename" ]]; then
+    package_info="$(_get_latest_package)"
+
+    if [[ -z "$package_info" ]]; then
         echo "ERROR: Could not find Claude Desktop package."
         return 1
     fi
+
+    local upstream_version="${package_info%%|*}"
+    local filename="${package_info#*|}"
+
+    echo "==> Latest Claude Desktop version:"
+    echo "    $upstream_version"
+
+    echo "==> Package filename:"
+    echo "    $filename"
 
     local deb_url="$base_url/$filename"
 
@@ -57,39 +130,60 @@ prepare() {
 
     curl -fL "$deb_url" -o claude-desktop.deb
 
+    if [[ ! -s "$srcdir/claude-desktop.deb" ]]; then
+        echo "ERROR: Claude Desktop package download failed."
+        return 1
+    fi
+
+    # ---------------------------------------------------------
+    # Extract Debian archive
+    # ---------------------------------------------------------
+
     echo "==> Extracting Debian archive..."
 
     rm -rf deb-extracted
     mkdir -p deb-extracted
 
-    # A .deb is an ar archive containing:
-    #   debian-binary
-    #   control.tar.*
-    #   data.tar.*
     bsdtar -xf claude-desktop.deb -C deb-extracted
 
     echo "==> Contents of Debian package:"
     ls -lh deb-extracted
 
-    # Extract the control archive so pkgver() can read it.
+    # ---------------------------------------------------------
+    # Extract control archive
+    # ---------------------------------------------------------
+
+    rm -rf control
     mkdir -p control
 
     local control_archive
-    control_archive=$(find deb-extracted -maxdepth 1 \
-        -type f \
-        \( -name 'control.tar.*' \) \
-        -print -quit)
 
-    if [[ -n "$control_archive" ]]; then
-        bsdtar -xf "$control_archive" -C control
+    control_archive="$(
+        find deb-extracted -maxdepth 1 \
+            -type f \
+            \( -name 'control.tar.*' \) \
+            -print -quit
+    )"
+
+    if [[ -z "$control_archive" ]]; then
+        echo "ERROR: control.tar archive not found."
+        return 1
     fi
 
-    # Find the actual application data archive.
+    bsdtar -xf "$control_archive" -C control
+
+    # ---------------------------------------------------------
+    # Extract data archive
+    # ---------------------------------------------------------
+
     local data_archive
-    data_archive=$(find deb-extracted -maxdepth 1 \
-        -type f \
-        \( -name 'data.tar.*' \) \
-        -print -quit)
+
+    data_archive="$(
+        find deb-extracted -maxdepth 1 \
+            -type f \
+            \( -name 'data.tar.*' \) \
+            -print -quit
+    )"
 
     if [[ -z "$data_archive" ]]; then
         echo "ERROR: data.tar archive not found."
@@ -99,54 +193,115 @@ prepare() {
     echo "==> Found data archive:"
     echo "    $data_archive"
 
-    # Extract the actual application filesystem.
     rm -rf data
     mkdir -p data
 
     bsdtar -xf "$data_archive" -C data
 
+    if [[ ! -d "$srcdir/data" ]]; then
+        echo "ERROR: Failed to extract data archive."
+        return 1
+    fi
+
     echo "==> Extracted files:"
     find data -maxdepth 3 -type f | head -30
 }
 
-pkgver() {
-    if [[ -f "$srcdir/control/control" ]]; then
-        sed -n 's/^Version: //p' "$srcdir/control/control" |
-            head -n1 |
-            sed 's/[^0-9.].*$//'
-    else
-        echo "1.0.0"
-    fi
-}
+# -------------------------------------------------------------
+# Package
+# -------------------------------------------------------------
 
 package() {
+
     cd "$srcdir"
 
     echo "==> Installing Claude Desktop..."
 
-    # Install the actual contents of data.tar.*.
+    if [[ ! -d "$srcdir/data" ]]; then
+        echo "ERROR: data directory does not exist."
+        echo "The prepare() stage probably failed."
+        return 1
+    fi
+
+    # Install the actual contents of data.tar.*
     cp -a data/. "$pkgdir/"
 
-    # Debian-specific files are not needed by Arch.
+    # ---------------------------------------------------------
+    # Configure Claude Desktop for Wayland
+    # ---------------------------------------------------------
+
+    local desktop_file="$pkgdir/usr/share/applications/com.anthropic.Claude.desktop"
+
+    local wayland_flags="--enable-features=WaylandWindowDecorations --ozone-platform=wayland"
+
+    if [[ -f "$desktop_file" ]]; then
+
+        echo "==> Configuring Claude Desktop for Wayland..."
+
+        # Only add the flags if they are not already present.
+        if ! grep -q -- '--ozone-platform=wayland' "$desktop_file"; then
+
+            sed -i "/^Exec=/ s|\$| $wayland_flags|" "$desktop_file"
+
+            echo "==> Wayland flags added."
+
+        else
+
+            echo "==> Wayland flags already present, skipping."
+
+        fi
+
+        echo "==> Claude Desktop Exec configuration:"
+
+        grep '^Exec=' "$desktop_file"
+
+    else
+
+        echo "WARNING: Desktop file not found:"
+        echo "    $desktop_file"
+
+    fi
+
+    # ---------------------------------------------------------
+    # Remove Debian-specific files
+    # ---------------------------------------------------------
+
     rm -rf "$pkgdir/DEBIAN"
 
-    # Fix desktop entry permissions.
+    # ---------------------------------------------------------
+    # Desktop entry permissions
+    # ---------------------------------------------------------
+
     if [[ -d "$pkgdir/usr/share/applications" ]]; then
+
         find "$pkgdir/usr/share/applications" \
             -type f \
             -name '*.desktop' \
             -exec chmod 644 {} \;
+
     fi
 
-    # Make sure binaries are executable.
+    # ---------------------------------------------------------
+    # Binary permissions
+    # ---------------------------------------------------------
+
     if [[ -d "$pkgdir/usr/bin" ]]; then
+
         find "$pkgdir/usr/bin" \
             -type f \
             -exec chmod +x {} \;
+
     fi
 
-    # Show what Claude installed.
+    # ---------------------------------------------------------
+    # Show installed Claude files
+    # ---------------------------------------------------------
+
     echo
     echo "==> Installed Claude files:"
-    find "$pkgdir" -maxdepth 4 -iname '*claude*' -print
+
+    find "$pkgdir" \
+        -maxdepth 4 \
+        -iname '*claude*' \
+        -print
 }
