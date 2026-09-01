@@ -1,4 +1,4 @@
-# Maintainer: Your Name
+# Maintainer: Oscar Rojas
 
 pkgname=claude-desktop
 pkgver=1.40609.0
@@ -37,6 +37,9 @@ depends=(
     'xdg-desktop-portal'
     'xdg-desktop-portal-gtk'
     'xdg-desktop-portal-gnome'
+    'qemu-desktop'
+    'edk2-ovmf'
+    'virtiofsd'
 )
 
 makedepends=(
