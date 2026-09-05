@@ -1,7 +1,7 @@
 # Maintainer: Oscar Rojas
 
 pkgname=google-chrome-wayland-bin
-pkgver=153.0.8010.12
+pkgver=154.0.8037.0
 pkgrel=1
 pkgdesc="Google Chrome browser (stable, official binary, integrated with Wayland)"
 arch=('x86_64')

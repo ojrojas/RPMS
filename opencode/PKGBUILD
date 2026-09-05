@@ -1,0 +1,367 @@
+# Maintainer: Oscar Rojas
+
+pkgname=opencode-desktop-bin
+pkgver=1.18.29
+pkgrel=1
+pkgdesc="OpenCode Desktop"
+arch=('x86_64')
+url="https://opencode.ai/download"
+license=('custom')
+options=('!strip')
+
+depends=(
+    'glibc'
+    'gtk3'
+    'libx11'
+    'libxcb'
+    'libxcomposite'
+    'libxdamage'
+    'libxext'
+    'libxfixes'
+    'libxrandr'
+    'libxtst'
+    'nss'
+    'nspr'
+    'alsa-lib'
+    'at-spi2-core'
+    'libxkbcommon'
+    'libdrm'
+    'mesa'
+    'libva'
+    'libsecret'
+    'wayland'
+    'libglvnd'
+    'libnotify'
+    'xdg-utils'
+)
+
+makedepends=(
+    'curl'
+    'libarchive'
+)
+
+source=(
+    "opencode-desktop.deb::https://opencode.ai/download/stable/linux-x64-deb"
+)
+
+sha256sums=('SKIP')
+
+
+# -------------------------------------------------------------
+# Extract package control file
+# -------------------------------------------------------------
+
+_extract_control() {
+
+    local deb="$1"
+    local output_dir="$2"
+
+    rm -rf "$output_dir"
+    mkdir -p "$output_dir"
+
+    local tmpdir
+
+    tmpdir="$(mktemp -d)"
+
+    # Debian packages are ar archives.
+    ar x "$deb" --output "$tmpdir"
+
+    local control_archive
+
+    control_archive="$(
+        find "$tmpdir" \
+            -maxdepth 1 \
+            -type f \
+            -name 'control.tar.*' \
+            -print -quit
+    )"
+
+    if [[ -z "$control_archive" ]]; then
+        rm -rf "$tmpdir"
+        return 1
+    fi
+
+    bsdtar -xf "$control_archive" -C "$output_dir"
+
+    rm -rf "$tmpdir"
+
+    [[ -f "$output_dir/control" ]]
+}
+
+
+# -------------------------------------------------------------
+# Get version directly from the official .deb
+# -------------------------------------------------------------
+
+pkgver() {
+
+    local deb
+
+    deb="$srcdir/opencode-desktop.deb"
+
+    # If makepkg has not downloaded the source yet, download it.
+    if [[ ! -s "$deb" ]]; then
+
+        echo "==> Downloading OpenCode Desktop to determine version..."
+
+        curl -fL \
+            'https://opencode.ai/download/stable/linux-x64-deb' \
+            -o "$deb"
+
+    fi
+
+    if [[ ! -s "$deb" ]]; then
+        echo "ERROR: Failed to download OpenCode Desktop."
+        return 1
+    fi
+
+    local tmpdir
+
+    tmpdir="$(mktemp -d)"
+
+    if ! _extract_control "$deb" "$tmpdir"; then
+
+        echo "ERROR: Could not extract Debian control file."
+
+        rm -rf "$tmpdir"
+
+        return 1
+
+    fi
+
+    local version
+
+    version="$(
+        sed -n 's/^Version: //p' "$tmpdir/control"
+    )"
+
+    rm -rf "$tmpdir"
+
+    if [[ -z "$version" ]]; then
+
+        echo "ERROR: Could not determine OpenCode Desktop version."
+
+        return 1
+
+    fi
+
+    # Debian versions may contain characters that are not ideal
+    # for Arch package versions.
+    version="${version//:/_}"
+
+    printf '%s\n' "$version"
+}
+
+
+# -------------------------------------------------------------
+# Prepare
+# -------------------------------------------------------------
+
+prepare() {
+
+    cd "$srcdir"
+
+    echo "==> Inspecting OpenCode Desktop package..."
+
+    if [[ ! -s "$srcdir/opencode-desktop.deb" ]]; then
+
+        echo "==> Downloading OpenCode Desktop..."
+
+        curl -fL \
+            'https://opencode.ai/download/stable/linux-x64-deb' \
+            -o "$srcdir/opencode-desktop.deb"
+
+    fi
+
+    if [[ ! -s "$srcdir/opencode-desktop.deb" ]]; then
+
+        echo "ERROR: OpenCode Desktop download failed."
+
+        return 1
+
+    fi
+
+
+    # ---------------------------------------------------------
+    # Extract Debian archive
+    # ---------------------------------------------------------
+
+    rm -rf deb-extracted
+    mkdir -p deb-extracted
+
+    echo "==> Extracting Debian archive..."
+
+    ar x \
+        "$srcdir/opencode-desktop.deb" \
+        --output "$srcdir/deb-extracted"
+
+
+    # ---------------------------------------------------------
+    # Extract control archive
+    # ---------------------------------------------------------
+
+    rm -rf control
+    mkdir -p control
+
+    local control_archive
+
+    control_archive="$(
+        find "$srcdir/deb-extracted" \
+            -maxdepth 1 \
+            -type f \
+            -name 'control.tar.*' \
+            -print -quit
+    )"
+
+    if [[ -z "$control_archive" ]]; then
+
+        echo "ERROR: control.tar archive not found."
+
+        return 1
+
+    fi
+
+    echo "==> Found control archive:"
+    echo "    $control_archive"
+
+    bsdtar -xf "$control_archive" -C "$srcdir/control"
+
+
+    if [[ ! -f "$srcdir/control/control" ]]; then
+
+        echo "ERROR: control file not found."
+
+        return 1
+
+    fi
+
+
+    # ---------------------------------------------------------
+    # Show Debian control information
+    # ---------------------------------------------------------
+
+    echo
+    echo "===== OpenCode Desktop control ====="
+
+    cat "$srcdir/control/control"
+
+    echo "===================================="
+    echo
+
+
+    # ---------------------------------------------------------
+    # Extract data archive
+    # ---------------------------------------------------------
+
+    local data_archive
+
+    data_archive="$(
+        find "$srcdir/deb-extracted" \
+            -maxdepth 1 \
+            -type f \
+            -name 'data.tar.*' \
+            -print -quit
+    )"
+
+    if [[ -z "$data_archive" ]]; then
+
+        echo "ERROR: data.tar archive not found."
+
+        return 1
+
+    fi
+
+    echo "==> Found data archive:"
+    echo "    $data_archive"
+
+
+    rm -rf data
+    mkdir -p data
+
+    bsdtar -xf "$data_archive" -C "$srcdir/data"
+
+
+    if [[ ! -d "$srcdir/data" ]]; then
+
+        echo "ERROR: Failed to extract data archive."
+
+        return 1
+
+    fi
+
+
+    echo
+    echo "==> OpenCode Desktop files:"
+    find "$srcdir/data" -maxdepth 4 -type f | head -50
+}
+
+
+# -------------------------------------------------------------
+# Package
+# -------------------------------------------------------------
+
+package() {
+
+    cd "$srcdir"
+
+    echo "==> Installing OpenCode Desktop..."
+
+    if [[ ! -d "$srcdir/data" ]]; then
+
+        echo "ERROR: data directory does not exist."
+
+        return 1
+
+    fi
+
+
+    # Install the contents of data.tar.*
+    cp -a "$srcdir/data/." "$pkgdir/"
+
+
+    # ---------------------------------------------------------
+    # Remove Debian-specific files
+    # ---------------------------------------------------------
+
+    rm -rf "$pkgdir/DEBIAN"
+
+
+    # ---------------------------------------------------------
+    # Desktop entry permissions
+    # ---------------------------------------------------------
+
+    if [[ -d "$pkgdir/usr/share/applications" ]]; then
+
+        find "$pkgdir/usr/share/applications" \
+            -type f \
+            -name '*.desktop' \
+            -exec chmod 644 {} \;
+
+    fi
+
+
+    # ---------------------------------------------------------
+    # Binary permissions
+    # ---------------------------------------------------------
+
+    if [[ -d "$pkgdir/usr/bin" ]]; then
+
+        find "$pkgdir/usr/bin" \
+            -type f \
+            -exec chmod +x {} \;
+
+    fi
+
+
+    # ---------------------------------------------------------
+    # Show installed files
+    # ---------------------------------------------------------
+
+    echo
+    echo "==> Installed OpenCode files:"
+
+    find "$pkgdir" \
+        -maxdepth 5 \
+        -iname '*opencode*' \
+        -print
+}
