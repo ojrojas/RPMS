@@ -1,23 +1,30 @@
 # Maintainer: Oscar Rojas
 
-pkgname=google-chrome-wayland-bin
-pkgver=154.0.8037.0
+pkgname=google-chrome
+pkgver=153.0.8010.36
 pkgrel=1
 pkgdesc="Google Chrome browser (stable, official binary, integrated with Wayland)"
-arch=('x86_64')
-url="https://www.google.com/chrome/"
-license=('custom:Google')
-depends=('glibc' 'gtk3' 'nss' 'alsa-lib' 'libxss' 'libsecret' 'wayland' 'libxkbcommon' 'libdrm' 'libglvnd')
+arch=('x86_64' 'aarch64')
+url="https://www.google.com/chrome"
+license=('custom:chrome')
+depends=('alsa-lib' 'at-spi2-core' 'atk' 'cairo' 'ca-certificates' 'cups'
+         'dbus' 'expat' 'fontconfig' 'freetype2' 'glib2' 'glibc' 'gtk3'
+         'libxcb' 'libxcomposite' 'libxdamage' 'libxext' 'libxfixes'
+         'libxkbcommon' 'libxrandr' 'mesa' 'nspr' 'nss' 'pango'
+         'systemd-libs' 'ttf-liberation' 'vulkan-icd-loader' 'wayland'
+         'wget' 'xdg-utils')
 optdepends=('pipewire: multimedia support' 'xdg-desktop-portal: desktop integration')
 provides=('google-chrome-wayland')
 conflicts=() 
 options=('!strip' '!debug')
-source=("google-chrome.desktop")
-sha256sums=('SKIP')
+source=("google-chrome.desktop"
+        "eula_text.html")
+sha256sums=('SKIP'
+            'SKIP')
 
 pkgver() {
   curl -s https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-amd64/Packages \
-    | grep -m1 "Version:" | awk '{print $2}' | cut -d'-' -f1
+  | awk '/^Package: google-chrome-stable$/{found=1} found && /^Version:/{print $2; exit}' | cut -d'-' -f1
 }
 
 prepare() {
@@ -34,11 +41,11 @@ package() {
   mkdir -p "$srcdir/tmpdeb"
   bsdtar -xf google-chrome.deb -C "$srcdir/tmpdeb"
   tar -xf "$srcdir/tmpdeb/data.tar.xz" -C "$pkgdir"
-  rm -rf "$srcdir/tmpdeb"
+  # rm -rf "$srcdir/tmpdeb"
 
   # Install renamed binaries to avoid conflicts with Chromium
 
-  install -Dm755 /dev/stdin "$pkgdir/usr/bin/google-chrome-wayland" <<'EOF'
+  install -Dm755 /dev/stdin "$pkgdir/usr/bin/google-chrome" <<'EOF'
 #!/bin/sh
 nohup /opt/google/chrome/google-chrome \
   --enable-features=UseOzonePlatform,WebRTCPipeWireCapturer,WaylandWindowDecorations \
@@ -54,5 +61,29 @@ EOF
 
   # install -Dm644 "$srcdir/google-chrome.desktop" \
   #   "$pkgdir/usr/share/applications/google-chrome-wayland.desktop"
+
+  # Icons
+	for i in 16x16 24x24 32x32 48x48 64x64 128x128 256x256; do
+		install -Dm644 "$pkgdir"/opt/google/chrome/product_logo_${i/x*/}.png \
+			"$pkgdir"/usr/share/icons/hicolor/$i/apps/google-chrome.png
+	done
+
+	# License
+	install -Dm644 "$srcdir/eula_text.html" \
+		"$pkgdir/usr/share/licenses/google-chrome/eula_text.html"
+	install -Dm644 "$pkgdir/opt/google/chrome/WidevineCdm/LICENSE" \
+		"$pkgdir/usr/share/licenses/google-chrome/WidevineCdm-LICENSE.txt"
+
+	# Fix the Chrome desktop entry
+	sed -i \
+		-e "/Exec=/i\StartupWMClass=Google-chrome" \
+		-e "s/x-scheme-handler\/ftp;\?//g" \
+		"$pkgdir"/usr/share/applications/google-chrome.desktop
+
+	# Remove the Debian Cron job, duplicate product logos and menu directory
+	rm -r \
+		"$pkgdir"/etc/cron.daily/ \
+		"$pkgdir"/opt/google/chrome/cron/ \
+		"$pkgdir"/opt/google/chrome/product_logo_*.png
 }
 

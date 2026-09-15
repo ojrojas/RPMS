@@ -3,7 +3,7 @@ set -e
 
 echo "🔍 Obteniendo última versión estable de Google Chrome..."
 ver=$(curl -s https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-amd64/Packages \
-  | grep -m1 "Version:" | awk '{print $2}' | cut -d'-' -f1)
+  | awk '/^Package: google-chrome-stable$/{found=1} found && /^Version:/{print $2; exit}' | cut -d'-' -f1)
 
 if [[ -z "$ver" ]]; then
   echo "❌ No se pudo obtener la versión."
