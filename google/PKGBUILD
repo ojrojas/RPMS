@@ -1,7 +1,7 @@
 # Maintainer: Oscar Rojas
 
 pkgname=google-chrome
-pkgver=153.0.8010.36
+pkgver=155.0.8059.39
 pkgrel=1
 pkgdesc="Google Chrome browser (stable, official binary, integrated with Wayland)"
 arch=('x86_64' 'aarch64')

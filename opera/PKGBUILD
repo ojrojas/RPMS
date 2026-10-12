@@ -1,0 +1,68 @@
+# Maintainer: Oscar Rojas
+
+pkgname=opera
+pkgver=137.0.6036.39
+pkgrel=1
+pkgdesc="Opera browser (stable, official binary, integrated with Wayland)"
+arch=('x86_64' 'aarch64')
+url="https://www.opera.com"
+license=('custom:opera')
+depends=('alsa-lib' 'at-spi2-core' 'atk' 'cairo' 'ca-certificates' 'cups'
+         'dbus' 'expat' 'fontconfig' 'freetype2' 'gdk-pixbuf2' 'glib2' 'glibc' 'gtk3'
+         'libcurl' 'libgbm' 'libxcb' 'libxcomposite' 'libxdamage' 'libxext' 'libxfixes'
+         'libxkbcommon' 'libxrandr' 'libxss' 'mesa' 'nspr' 'nss' 'pango'
+         'systemd-libs' 'vulkan-icd-loader' 'wayland'
+         'wget' 'xdg-utils')
+optdepends=('pipewire: multimedia support' 'xdg-desktop-portal: desktop integration')
+provides=('opera-stable')
+conflicts=()
+options=('!strip' '!debug')
+source=("opera.desktop")
+sha256sums=('SKIP')
+
+pkgver() {
+  curl -s https://rpm.opera.com/rpm/ \
+  | grep -oE 'opera_stable-[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-linux-release-x64-signed\.rpm' \
+  | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | sort -Vu | tail -n1
+}
+
+prepare() {
+  _ver=$(pkgver)
+  case "$CARCH" in
+    x86_64) _arch="x64" ;;
+    aarch64) _arch="arm64" ;;
+  esac
+  echo "➡️ Descargando Opera versión ${_ver} (${CARCH})..."
+  curl -L -o "opera.rpm" "https://rpm.opera.com/rpm/opera_stable-${_ver}-linux-release-${_arch}-signed.rpm"
+}
+
+package() {
+  install -d "$pkgdir"
+
+  # Extract the .rpm package directly into $pkgdir
+  bsdtar -xf opera.rpm -C "$pkgdir"
+
+  # Replace the /usr/bin/opera symlink with a Wayland wrapper
+  # (same style as google-chrome PKGBUILD)
+  rm -f "$pkgdir/usr/bin/opera"
+  install -Dm755 /dev/stdin "$pkgdir/usr/bin/opera" <<'EOF'
+#!/bin/sh
+nohup /usr/lib64/opera-stable/opera \
+  --enable-features=UseOzonePlatform,WebRTCPipeWireCapturer,WaylandWindowDecorations \
+  --ozone-platform=wayland \
+  --enable-wayland-ime \
+  "$@" >/dev/null 2>&1 &
+disown
+EOF
+
+  # Custom .desktop pointing to the wrapper
+  install -Dm644 "$srcdir/opera.desktop" \
+    "$pkgdir/usr/share/applications/opera.desktop"
+
+  # License
+  install -Dm644 "$pkgdir/usr/lib64/opera-stable/opera_autoupdate.licenses" \
+    "$pkgdir/usr/share/licenses/opera/LICENSE.txt"
+
+  # Remove the repo setup script to avoid auto-adding upstream repos
+  rm -f "$pkgdir/usr/lib64/opera-stable/setup_repo.sh"
+}
