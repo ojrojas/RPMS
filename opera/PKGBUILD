@@ -1,7 +1,7 @@
 # Maintainer: Oscar Rojas
 
 pkgname=opera
-pkgver=137.0.6036.39
+pkgver=138.0.6044.24
 pkgrel=1
 pkgdesc="Opera browser (stable, official binary, integrated with Wayland)"
 arch=('x86_64' 'aarch64')
@@ -9,10 +9,10 @@ url="https://www.opera.com"
 license=('custom:opera')
 depends=('alsa-lib' 'at-spi2-core' 'atk' 'cairo' 'ca-certificates' 'cups'
          'dbus' 'expat' 'fontconfig' 'freetype2' 'gdk-pixbuf2' 'glib2' 'glibc' 'gtk3'
-         'libcurl' 'libgbm' 'libxcb' 'libxcomposite' 'libxdamage' 'libxext' 'libxfixes'
+         'libxcb' 'libxcomposite' 'libxdamage' 'libxext' 'libxfixes'
          'libxkbcommon' 'libxrandr' 'libxss' 'mesa' 'nspr' 'nss' 'pango'
          'systemd-libs' 'vulkan-icd-loader' 'wayland'
-         'wget' 'xdg-utils')
+         'wget' 'xdg-utils' 'curl' 'egl-gbm')
 optdepends=('pipewire: multimedia support' 'xdg-desktop-portal: desktop integration')
 provides=('opera-stable')
 conflicts=()
