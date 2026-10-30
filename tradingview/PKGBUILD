@@ -2,7 +2,7 @@
 #https://tvd-packages.tradingview.com/ubuntu/stable/latest/jammy/tradingview_amd64.deb
 
 pkgname=tradingview
-pkgver=3.4.1
+pkgver=3.5.0
 pkgrel=1
 pkgdesc="TradingView Desktop (official binary from TradingView's Ubuntu .deb)"
 arch=('x86_64')

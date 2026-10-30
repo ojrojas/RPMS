@@ -1,7 +1,7 @@
 # Maintainer: Oscar Rojas
 
 pkgname=opencode-desktop-bin
-pkgver=2.0.32
+pkgver=2.2.4
 pkgrel=1
 pkgdesc="OpenCode Desktop"
 arch=('x86_64')
