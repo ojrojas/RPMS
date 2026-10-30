@@ -1,0 +1,60 @@
+# Maintainer: Oscar Rojas
+#https://tvd-packages.tradingview.com/ubuntu/stable/latest/jammy/tradingview_amd64.deb
+
+pkgname=tradingview
+pkgver=3.4.1
+pkgrel=1
+pkgdesc="TradingView Desktop (official binary from TradingView's Ubuntu .deb)"
+arch=('x86_64')
+url="https://www.tradingview.com/desktop/"
+license=('custom:tradingview')
+depends=('alsa-lib' 'at-spi2-core' 'cairo' 'expat' 'fontconfig' 'freetype2' 'glib2'
+         'glibc' 'gtk3' 'libappindicator-gtk3' 'libx11' 'libxcb' 'libxcomposite'
+         'libxdamage' 'libxext' 'libxfixes' 'libxkbcommon' 'libxrandr'
+         'mesa' 'nss' 'pango' 'wget' 'xdg-utils')
+optdepends=('pipewire: multimedia support'
+            'xdg-desktop-portal: desktop integration')
+options=('!strip' '!debug')
+source=()
+sha256sums=()
+
+pkgver() {
+  # Descarga solo el control.tar.gz del .deb (primeros KB) para leer la versión
+  curl -s -r 132-6000 https://tvd-packages.tradingview.com/ubuntu/stable/latest/jammy/tradingview_amd64.deb \
+  | gzip -dc 2>/dev/null | tar -xO ./control 2>/dev/null \
+  | awk '/^Version:/{print $2}' | cut -d'-' -f1
+}
+
+prepare() {
+  _ver=$(curl -s -r 132-6000 https://tvd-packages.tradingview.com/ubuntu/stable/latest/jammy/tradingview_amd64.deb \
+    | gzip -dc 2>/dev/null | tar -xO ./control 2>/dev/null \
+    | awk '/^Version:/{print $2}')
+  echo "➡️  Descargando TradingView versión ${_ver}..."
+  curl -L -o "tradingview.deb" "https://tvd-packages.tradingview.com/ubuntu/stable/latest/jammy/tradingview_amd64.deb"
+}
+
+package() {
+  install -d "$pkgdir"
+
+  # Extract the .deb package into a tmpdir to avoid conflicts
+  mkdir -p "$srcdir/tmpdeb"
+  bsdtar -xf tradingview.deb -C "$srcdir/tmpdeb"
+  tar -xf "$srcdir/tmpdeb/data.tar.gz" -C "$pkgdir"
+
+  # TradingView no empaqueta binario en /usr/bin: en Debian se crea vía
+  # update-alternatives (postinst). En Arch lo hacemos con un symlink.
+  install -d "$pkgdir/usr/bin"
+  ln -sf /opt/TradingView/tradingview "$pkgdir/usr/bin/tradingview"
+
+  # License
+  install -d "$pkgdir/usr/share/licenses/tradingview"
+  cp -a "$pkgdir/opt/TradingView/LICENSES.chromium.html" \
+    "$pkgdir/usr/share/licenses/tradingview/LICENSES.chromium.html"
+  install -Dm644 "$pkgdir/usr/share/doc/tradingview/changelog.gz" \
+    "$pkgdir/usr/share/licenses/tradingview/changelog.gz"
+
+  # Remove the Debian apt repository files and docs, no longer needed on Arch
+  rm -r \
+    "$pkgdir"/etc \
+    "$pkgdir"/usr/share/doc
+}
