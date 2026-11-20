@@ -1,7 +1,7 @@
 # Maintainer: Oscar Rojas
 
 pkgname=opera
-pkgver=138.0.6044.24
+pkgver=140.0.6074.18
 pkgrel=1
 pkgdesc="Opera browser (stable, official binary, integrated with Wayland)"
 arch=('x86_64' 'aarch64')
